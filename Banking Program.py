@@ -2,151 +2,174 @@ import os
 import sys
 from datetime import datetime
 
-# --- CONFIGURATION ---
-USERS_FILE = "Iron.txt"
-TRANSACTION_LOG_FILE = "Transact.txt"
-DEFAULT_BALANCE = 1200. 
+
+class Borrower:
+    """
+    Layer 1 - Data Layer
+    Stores all applicant information collected during the loan application process.
+    Acts as the single source of truth for borrower attributes throughout the system.
+    """
+
+    def __init__(self, name, dob, cash_flow, monthly_income, credit_score, loan_amount, loan_term):
+        self.name = name
+        self.dob = dob
+        self.monthly_income = monthly_income
+        self.cash_flow = cash_flow
+        self.credit_score = credit_score
+        self.loan_amount = loan_amount
+        self.loan_term = loan_term
+
+    def get_summary(self):
+        """Prints a formatted summary of the borrower's profile."""
+        print(f"Borrower Name  : {self.name}")
+        print(f"Date Of Birth  : {self.dob}")
+        print(f"Monthly Income : ${self.monthly_income:,.2f}")
+        print(f"Cash Flow      : ${self.cash_flow:,.2f}")
+        print(f"Credit Score   : {self.credit_score}")
+        print(f"Loan Amount    : ${self.loan_amount:,.2f}")
+        print(f"Loan Term      : {self.loan_term} years")
 
 
-class IronBankEngine:
-    """The Persistence Layer: Handles all file reading and writing."""
+class RiskEngine:
+    """
+    Layer 2 - Math Engine
+    Performs all financial ratio calculations (DSCR, DTI) on a Borrower object.
+    Produces a risk verdict based on industry-standard thresholds.
+    Does not store data or make final decisions — only calculates and classifies.
+    """
 
-    @staticmethod
-    def initialize_systems():
-        if not os.path.exists(USERS_FILE):
-            with open(USERS_FILE, 'w') as f:  
-                pass
-        if not os.path.exists(TRANSACTION_LOG_FILE):
-            with open(TRANSACTION_LOG_FILE, 'w') as f:
-                f.write("------------ TRANSACTION LOG STARTED ------------\n") 
-                 
+    def __init__(self, borrower_data):
+        self.borrower_data = borrower_data
 
+    def calculate_dti(self):
+        """Debt-to-Income Ratio: measures what percentage of income goes toward debt."""
+        return self.borrower_data.loan_amount / self.borrower_data.monthly_income
 
-    @staticmethod
-    def save_user_state(email, balance, new_password=None):
-        """Finds user by email and updates their balance or password."""
-        updated_lines = []
-        with open(USERS_FILE, "r") as f:
-            for line in f:
-                parts = line.strip().split(",")
-                if len(parts) == 3:
-                    stored_email, stored_pass, stored_balance = parts
-                    if stored_email == email:
-                        # If a new_password is provided, use it; otherwise keep the old one
-                        pass_to_save = new_password if new_password else stored_pass
-                        updated_lines.append(f"{stored_email},{pass_to_save},{balance}\n")
-                    else:
-                        updated_lines.append(line) 
-                         
-                                 
-        with open(USERS_FILE, "w") as f:
-            f.writelines(updated_lines) 
-             
+    def calculate_dscr(self):
+        """Debt Service Coverage Ratio: measures cash flow against monthly loan repayment."""
+        monthly_payment = self.borrower_data.loan_amount / (self.borrower_data.loan_term * 12)
+        return self.borrower_data.cash_flow / monthly_payment
 
+    def get_risk_verdict(self):
+        """Classifies borrower risk into four tiers based on DTI, DSCR, and credit score."""
+        dscr = self.calculate_dscr()
+        dti = self.calculate_dti()
+        score = self.borrower_data.credit_score
 
-    @staticmethod
-    def log_transaction(email, action, amount):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        entry = f"[{timestamp}] {email} | {action}: ${amount:,.2f}\n"
-        with open(TRANSACTION_LOG_FILE, "a") as f:
-            f.write(entry)
-
-class BankAccount:
-    """The Business Logic: Handles user actions in memory."""
-    def __init__(self, email, balance):
-        self.email = email
-        self.balance = float(balance)
-
-    def deposit(self):
-        amount = self._get_amount("DEPOSIT")
-        if amount:
-            self.balance += amount
-            IronBankEngine.save_user_state(self.email, self.balance)
-            IronBankEngine.log_transaction(self.email, "DEPOSIT", amount)
-            print(f"\n[SUCCESS] NEW BALANCE: ${self.balance:,.2f}")
-
-    def withdraw(self):
-        
-        print(f"\n YOU HAVE: ${self.balance}")
-        
-        amount = self._get_amount("WITHDRAWAL")
-        
-        if amount:
-            print(f" COMPARING: Is {amount} > {self.balance}?")
-            
-            if amount > self.balance:
-                print(f"[ERROR] YES. {amount} is greater than {self.balance}.")
-                print(f"[ERROR] INSUFFICIENT FUNDS! YOU HAVE: ${self.balance:,.2f}")
-                return
-            self.balance -= amount
-            IronBankEngine.save_user_state(self.email, self.balance)
-            IronBankEngine.log_transaction(self.email, "WITHDRAWAL", amount)
-            print(f"\n[SUCCESS] WITHDRAWAL COMPLETE.")
-            print(f"[SUCCESS] NEW BALANCE: ${self.balance:,.2f}")
-
-    def change_password(self):
-        new_password = input("ENTER NEW PASSWORD (MIN 8): ")
-        if len(new_password) >= 8:
-            # We call the engine to update the password in the file
-            IronBankEngine.save_user_state(self.email, self.balance, new_password=new_password)
-            print("\n[SUCCESS] PASSWORD UPDATED.")
+        if dti < 0.36 and dscr >= 1.25 and score >= 700:
+            return "Low Risk"
+        elif dti < 0.43 and dscr < 1.25 and score >= 650:
+            return "Medium Risk"
+        elif dti >= 0.43 or dscr < 1.0 or score < 650:
+            return "High Risk"
         else:
-            print("\n[ERROR] TOO SHORT.")
+            return "Undetermined Risk"
 
-    def _get_amount(self, action):
-        try:
-            val = float(input(f"ENTER {action} AMOUNT: $"))
-            return val if val > 0 else None
-        except ValueError:
-            print("[ERROR] INVALID INPUT.")
-            return None
 
-# --- APP FLOW ---
-def authenticate():
-    email = input("EMAIL: ")
-    pwd = input("PASSWORD: ")
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, "r") as f:
-            for line in f:
-                data = line.strip().split(",")
-                if len(data) == 3:
-                    u, p, b = data
-                    if u == email and p == pwd:
-                        return BankAccount(u, b)
-    return None
+class CreditPersistence:
+    """
+    Layer 3 - Persistence Layer
+    Handles all file operations: initializing storage and saving borrower records.
+    Uses static methods because it operates on data passed to it, not on instance state.
+    All records are saved to a CSV file for future analysis with Pandas.
+    """
 
-def register():
-    email = input("NEW EMAIL: ")
-    password = input("NEW PASSWORD: ")
-    with open(USERS_FILE, "a") as f:
-        f.write(f"{email},{password},{DEFAULT_BALANCE}\n")
-    print("\n[SUCCESS] REGISTRATION COMPLETE.")
+    @staticmethod
+    def initialize_database():
+        """Creates the borrower CSV file with headers if it does not already exist."""
+        if not os.path.exists("borrowers.csv"):
+            with open("borrowers.csv", "w") as f:
+                f.write("Name,Date of Birth,Monthly Income,Cash Flow,"
+                        "Credit Score,Loan Amount,Loan Term,Risk Verdict\n")
+
+    @staticmethod
+    def save_borrower(borrower_data, risk_verdict):
+        """Appends a borrower record and their risk verdict to the CSV file."""
+        with open("borrowers.csv", "a") as f:
+            f.write(f"{borrower_data.name},{borrower_data.dob},{borrower_data.monthly_income},"
+                    f"{borrower_data.cash_flow},{borrower_data.credit_score},"
+                    f"{borrower_data.loan_amount},{borrower_data.loan_term},{risk_verdict}\n")
+
+
+class CreditDecision:
+    """
+    Layer 4 - Decision Layer
+    Translates the RiskEngine verdict into a clear, actionable loan decision.
+    Exists so that any non-technical stakeholder can read the final outcome directly.
+    """
+
+    def __init__(self, borrower, risk_engine):
+        self.borrower = borrower
+        self.risk_engine = risk_engine
+
+    def make_decision(self):
+        """Returns a formal loan decision based on the risk classification."""
+        verdict = self.risk_engine.get_risk_verdict()
+
+        if verdict == "Low Risk":
+            return "APPROVED"
+        elif verdict == "Medium Risk":
+            return "APPROVED WITH CONDITIONS"
+        elif verdict == "High Risk":
+            return "DENIED"
+        elif verdict == "Undetermined Risk":
+            return "FURTHER REVIEW REQUIRED"
+        else:
+            return "ERROR IN RISK ASSESSMENT"
+
+
+class GenerateCreditMemo:
+    """
+    Layer 5 - Memo Layer
+    Assembles all outputs from the other layers into a single, readable credit memo.
+    This is the final document a loan officer reviews — it contains the borrower
+    profile, financial ratios, risk verdict, and the ultimate credit decision.
+    """
+
+    def __init__(self, borrower, risk_engine, credit_decision):
+        self.borrower = borrower
+        self.risk_engine = risk_engine
+        self.credit_decision = credit_decision
+
+    def generate_memo(self):
+        """Prints the full credit assessment memo to the console."""
+        print("\n" + "=" * 45)
+        print("        IRON BANK — CREDIT ASSESSMENT MEMO")
+        print("=" * 45)
+        self.borrower.get_summary()
+        print("-" * 45)
+        print(f"DSCR           : {self.risk_engine.calculate_dscr():.2f}")
+        print(f"DTI            : {self.risk_engine.calculate_dti():.2f}")
+        print("-" * 45)
+        print(f"Risk Verdict   : {self.risk_engine.get_risk_verdict()}")
+        print(f"Decision       : {self.credit_decision.make_decision()}")
+        print("=" * 45 + "\n")
+
+
+# --- ENTRY POINT ---
 
 def main():
-    IronBankEngine.initialize_systems()
-    while True:
-        print("\n" + "="*30 + "\n  THE IRON BANK\n" + "="*30)
-        print("1. LOGIN\n2. REGISTER\n3. EXIT")
-        choice = input("SELECT > ")
-        if choice == "3": break
-        if choice == "2": register()
-        elif choice == "1":
-            user_account = authenticate()
-            if user_account:
-                banking_menu(user_account)
-            else:
-                print("\n[DENIED] INVALID LOGIN.")
+    CreditPersistence.initialize_database()
 
-def banking_menu(account):
-    while True:
-        print(f"\n--- WELCOME {account.email} ---")
-        print("1. DEPOSIT\n2. WITHDRAW\n3. BALANCE\n4. CHANGE PASSWORD\n5. LOGOUT")
-        opt = input("ACTION > ")
-        if opt == "1": account.deposit()
-        elif opt == "2": account.withdraw()
-        elif opt == "3": print(f"\nCURRENT BALANCE: ${account.balance:,.2f}")
-        elif opt == "4": account.change_password()
-        elif opt == "5": break
+    borrower = Borrower(
+        name="SOMANJAN SAHA",
+        dob="18-09-2006",
+        monthly_income=5000.00,
+        cash_flow=2000.00,
+        credit_score=720,
+        loan_amount=150000.00,
+        loan_term=30
+    )
+
+    risk_engine = RiskEngine(borrower)
+    credit_decision = CreditDecision(borrower, risk_engine)
+    memo = GenerateCreditMemo(borrower, risk_engine, credit_decision)
+
+    memo.generate_memo()
+
+    CreditPersistence.save_borrower(borrower, risk_engine.get_risk_verdict())
+    print("[LOG] Borrower record saved to borrowers.csv")
+
 
 if __name__ == "__main__":
     main()
