@@ -1,34 +1,39 @@
-🏦 The Iron Bank (CLI Banking System)
+Iron Bank — Automated Credit Risk Assessment System
+A modular, Python-based credit risk engine that evaluates loan applications using
+industry-standard financial ratios and produces a formal credit assessment memo.
+Overview
+This system automates the credit evaluation process by analysing borrower financial
+data through a five-layer architecture. Given a borrower's income, cash flow, credit
+score, and loan parameters, the system calculates key risk metrics (DSCR and DTI),
+classifies the applicant into a risk tier, and issues a formal credit decision —
+approved, approved with conditions, or denied.
+Built as the first capstone project in a four-year roadmap targeting a Credit Risk
+Analyst role at HSBC or a Risk Advisory role at a Big 4 firm.
+Architecture
+LayerClassResponsibility1BorrowerStores all applicant data collected during loan application2RiskEngineCalculates DSCR, DTI, and classifies borrower risk tier3CreditPersistenceSaves borrower records and risk verdicts to CSV storage4CreditDecisionTranslates risk verdict into a formal loan decision5GenerateCreditMemoAssembles all outputs into a readable credit assessment memo
+Key Metrics
 
-### A Secure, Persistent Banking Simulation Backend built with Python.
+DSCR (Debt Service Coverage Ratio) — measures cash flow against monthly repayment
+DTI (Debt-to-Income Ratio) — measures what percentage of income goes toward debt
 
-This project simulates the core functionalities of a banking system, focusing on **state persistence**, **secure authentication**, and **financial risk controls**. Unlike basic scripts, The Iron Bank maintains user data across sessions using a file-based database architecture.
+Risk Tiers
+DTIDSCRCredit ScoreVerdict< 0.36≥ 1.25≥ 700Low Risk → Approved< 0.43< 1.25≥ 650Medium Risk → Approved with Conditions≥ 0.43< 1.0< 650High Risk → Denied
+How to Run
+bashpython credit_risk_system.py
+Output: a formatted credit memo printed to console + borrower record saved to borrowers.csv
+Roadmap
 
----
+ Pandas integration for bulk borrower analysis
+ NumPy synthetic data generation for model stress testing
+ IFRS 9 Expected Credit Loss engine
+ Streamlit dashboard for interactive loan evaluation
+ Machine learning PD (Probability of Default) scoring model
 
-## 🚀 Key Features
+Tech Stack
 
-### 1. 🔐 Secure Authentication Layer
-- Implementation of a login system requiring email and password verification.
-- Robust **User Registration Flow** with password strength validation (min 8 chars).
-- Prevents unauthorized access to banking functions.
+Python 3.x
+Standard library only (Phase 1)
+Pandas, NumPy, Streamlit — planned (Phase 2)
 
-### 2. 💾 Persistent State Management (File I/O)
-- **Auto-Healing Initialization:** The system automatically checks for missing database files (`balance.txt`, `transaction_log.txt`) on startup and creates them if needed to prevent crashes.
-- **Real-Time Updates:** Account balance is read from and written to disk instantly after every transaction, ensuring no data loss.
 
-### 3. 🛡️ Risk Management & Error Handling
-- **Overdraft Protection:** Logic guards prevent withdrawals exceeding the current balance.
-- **Input Sanitization:** Uses `try-except` blocks to handle non-numeric inputs gracefully without crashing the application.
-- **Negative Value Guards:** Prevents malicious inputs (e.g., depositing negative money).
-
-### 4. 📜 Compliance & Audit Trail
-- Includes a dedicated `log_transaction()` module.
-- Records every Deposit and Withdrawal with a **Timestamp** (`YYYY-MM-DD HH:MM:SS`) to a permanent log file, simulating real-world banking compliance standards.
-
---- 
-
-## 🛠️ Technical Stack
-- **Language:** Python 3.x
-- **Modules:** `os` (File System), `datetime` (Timestamping)
-- **Concepts:** Functions, File Handling, Exception Handling, Control Flow, String Manipulation.
+Year 1 Capstone Project — B.Sc. Econometrics Honours, Calcutta University (2025–2029)
