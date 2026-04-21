@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import datetime
-
+import math
 
 class Borrower:
     """
@@ -138,8 +138,10 @@ class GenerateCreditMemo:
         print("=" * 45)
         self.borrower.get_summary()
         print("-" * 45)
-        print(f"DSCR           : {self.risk_engine.calculate_dscr():.2f}")
-        print(f"DTI            : {self.risk_engine.calculate_dti():.2f}")
+        dscr = self.risk_engine.calculate_dscr()
+        dti = self.risk_engine.calculate_dti()
+        print(f"DSCR           : {dscr:.2f}" if not math.isnan(dscr) else "DSCR           : UNDEFINED")
+        print(f"DTI            : {dti:.2f}" if not math.isnan(dti) else "DTI            : UNDEFINED")
         print("-" * 45)
         print(f"Risk Verdict   : {self.risk_engine.get_risk_verdict()}")
         print(f"Decision       : {self.credit_decision.make_decision()}")
